@@ -1,6 +1,6 @@
-# Вводим переменные
-number_of_pages = '100'
-number_of_items = '100'
+# Переменные
+number_of_pages = '1'
+number_of_items = '10'
 csv_file_name = 'nevnovru_' + str(int(number_of_pages) * int(number_of_items)) + str('.csv')
 
 from google.colab import drive
@@ -10,16 +10,24 @@ drive.mount('/gdrive')
 %cd /gdrive/My Drive/wproject102
 %cd /gdrive/My Drive/wproject102/archipelago
 
-# importing the requests library 
+# importing the library 
 import requests
 import pandas as pd
-import os
+import re, os
+from bs4 import BeautifulSoup
 
-# так как добавляю записи в цикле
+# очистка от тегов
+def clean(text):
+    text = BeautifulSoup(text, "lxml")
+    text = text.get_text()
+    text = re.sub('\n', ' ', text)    
+    return text
+
+# очистка итогового файла
 if os.path.isfile(str(csv_file_name)):
   os.remove(str(csv_file_name))
 
-# headers
+# заголовки, необязательно
 user_agent = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_2) AppleWebKit/600.3.18 (KHTML, like Gecko) Version/8.0.3 Safari/600.3.18'
 headers = { 'User-Agent' : user_agent }  
 
@@ -30,15 +38,15 @@ for number in range(1,int(number_of_pages) + 1): # number страниц по 10
   r = requests.get(url = URL, headers=headers)
   # extracting data in json format 
   json = r.json() 
-  # counting array size
   print(str(URL) + str(" ") + str(len(json['posts']['data'])))
-  df3 = pd.DataFrame.from_dict(json['posts']['data'])
-  selected_columns = df3[["date_num", "time", "title", "content", "fulllink",]]
+  df = pd.DataFrame.from_dict(json['posts']['data'])
+  selected_columns = df[["date_num", "time", "title", "content", "fulllink",]]
   df2csv = selected_columns.copy()
   df2csv = df2csv.rename(columns={'date_num':'date', 'content':'text', 'fulllink':'url'})
-   #df2csv = df2csv.replace(to_replace ='<p>', value = '', regex = True)
+  for index, row in df2csv.iterrows():
+      row["text"] = clean(row["text"])
   df2csv.to_csv(str(csv_file_name), mode='a', index=False, sep=";") #append
 
-# Read file
+# Читаю итоговый файл
 csv2df = pd.read_csv(csv_file_name, sep=";")
 csv2df
